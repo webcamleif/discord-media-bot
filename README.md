@@ -1,16 +1,19 @@
 # Discord Media Bot
 
 A self-hosted **Discord bot** that integrates with your home media stack (Plex, Tautulli, qBittorrent, Radarr, Sonarr) and provides **status updates**, **statistics**, and **download monitoring** directly in your Discord server.
+<p align="center">
+  <img src="screenshots/stream.png" alt="Plex Stream"/>
+</p>
 
 ## ✨ Features
 
-- 🎬 **Plex Streams**  
+- 🎬 **Plex Streams**    
   Show currently active Plex streams in a dedicated Discord channel.
 
-- 📊 **Plex Statistics**  
+- 📊 **Plex Statistics**    
   Post daily/weekly/monthly top user and library activity reports.
 
-- 🛠 **Plex Status Channels**  
+- 🛠 **Plex Status Channels**    
   Keep Discord channel names updated with Plex stats (movie count, show count, user count).
 
 - ⬇️ **qBittorrent Downloads**  
@@ -23,7 +26,8 @@ A self-hosted **Discord bot** that integrates with your home media stack (Plex, 
   - Allow insecure connections (skip verification).  
   - Use a custom Root CA certificate (via WebUI config).
 
-- 🌐 **Web Admin Interface**  
+- 🌐 **Web Admin Interface**    
+  ![Admin Dashboard](screenshots/interface.png)
   - Configure bot settings via browser.  
   - Secure login with admin user/pass.  
   - Save & reload config without restarting the container.  
@@ -184,6 +188,11 @@ Admin panel will be available at [http://localhost:8080](http://localhost:8080).
   - You uploaded the Root CA in the WebUI.  
   - The CA file is accessible inside the container.  
 - If still failing, enable **Allow insecure SSL** to confirm if it’s a cert issue.
+
+## More Screenshots
+![Downloads](screenshots/download.png)  
+![Plex stats](screenshots/stats.png)
+![Plex channels](screenshots/channels.png)
 
 ## 📜 License
 
