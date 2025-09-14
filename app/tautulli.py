@@ -1,21 +1,27 @@
 import aiohttp
 from urllib.parse import quote
+from app.sslutil import build_aiohttp_ssl
 
 
 class TautulliClient:
-    def __init__(self, base_url: str, api_key: str):
+    def __init__(self, base_url: str, api_key: str, ca_cert_path: str | None = None, insecure: bool = False):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+        self._ssl_context = build_aiohttp_ssl(ca_cert_path, insecure)
 
     async def _get(self, cmd: str, params: dict | None = None) -> dict:
-        """Generic GET wrapper for Tautulli API v2."""
         params = params or {}
         url = f"{self.base_url}/api/v2"
         q = {"apikey": self.api_key, "cmd": cmd}
         q.update(params)
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=q, timeout=10) as resp:
+            async with session.get(
+                url,
+                params=q,
+                timeout=10,
+                ssl=self._ssl_context
+            ) as resp:
                 resp.raise_for_status()
                 return await resp.json()
 

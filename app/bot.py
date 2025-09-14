@@ -75,7 +75,12 @@ class BotManager:
     
         # Init clients
         self._tautulli = (
-            TautulliClient(self.cfg.tautulli_url, self.cfg.tautulli_api_key)
+            TautulliClient(
+                self.cfg.tautulli_url,
+                self.cfg.tautulli_api_key,
+                ca_cert_path=self.cfg.general.ca_cert_path,
+                insecure=self.cfg.general.insecure_ssl,
+            )
             if (self.cfg.tautulli_url and self.cfg.tautulli_api_key) else None
         )
     
@@ -90,6 +95,8 @@ class BotManager:
                     self.cfg.arr.radarr_api_key or "",
                     self.cfg.arr.sonarr_host or "",
                     self.cfg.arr.sonarr_api_key or "",
+                    ca_cert_path=self.cfg.general.ca_cert_path,
+                    insecure=self.cfg.general.insecure_ssl,
                 )
         except Exception as e:
             log.warning("Posters disabled: %s", e)
@@ -98,7 +105,13 @@ class BotManager:
         self._qbit = None
         if self.cfg.qbit.host and self.cfg.qbit.channel_id:
             from app.qbit import QbitClient
-            self._qbit = QbitClient(self.cfg.qbit.host, 8080, self.cfg.qbit.username, self.cfg.qbit.password)
+            self._qbit = QbitClient(
+                self.cfg.qbit.host,
+                self.cfg.qbit.username,
+                self.cfg.qbit.password,
+                ca_cert_path=self.cfg.general.ca_cert_path,
+                insecure=self.cfg.general.insecure_ssl,
+            )
 
     def _setup_client(self):
         intents = discord.Intents.default()

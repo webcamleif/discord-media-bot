@@ -1,5 +1,6 @@
 import requests
 from functools import lru_cache
+from app.sslutil import build_requests_kwargs
 
 def _params_key(params: dict | None) -> tuple | None:
     if not params:
@@ -7,12 +8,12 @@ def _params_key(params: dict | None) -> tuple | None:
     return tuple(sorted((str(k), str(v)) for k, v in params.items()))
 
 class PosterResolver:
-    """Resolve public CDN poster URLs via Radarr/Sonarr; safe for Discord embeds."""
-    def __init__(self, radarr_url: str, radarr_key: str, sonarr_url: str, sonarr_key: str):
+    def __init__(self, radarr_url, radarr_key, sonarr_url, sonarr_key, ca_cert_path=None, insecure=False):
         self.radarr_url = (radarr_url or "").rstrip("/")
         self.radarr_key = radarr_key or ""
         self.sonarr_url = (sonarr_url or "").rstrip("/")
         self.sonarr_key = sonarr_key or ""
+        self._requests_kwargs = build_requests_kwargs(ca_cert_path, insecure)
 
     # MOVIES
     def movie_poster(self, title: str | None, year: int | str | None, imdb_id: str | None, tmdb_id: str | int | None) -> str | None:
@@ -104,7 +105,11 @@ class PosterResolver:
     def _radarr_get_cached(self, path: str, params_key: tuple | None):
         params = dict(params_key) if params_key else {}
         try:
-            r = requests.get(f"{self.radarr_url}{path}", headers={"X-Api-Key": self.radarr_key}, params=params, timeout=10)
+            r = requests.get(f"{self.radarr_url}{path}",
+                             headers={"X-Api-Key": self.radarr_key},
+                             params=params,
+                             timeout=10,
+                             **self._requests_kwargs)
             r.raise_for_status()
             return r.json()
         except Exception:
@@ -114,7 +119,11 @@ class PosterResolver:
     def _sonarr_get_cached(self, path: str, params_key: tuple | None):
         params = dict(params_key) if params_key else {}
         try:
-            r = requests.get(f"{self.sonarr_url}{path}", headers={"X-Api-Key": self.sonarr_key}, params=params, timeout=10)
+            r = requests.get(f"{self.sonarr_url}{path}",
+                             headers={"X-Api-Key": self.sonarr_key},
+                             params=params,
+                             timeout=10,
+                             **self._requests_kwargs)
             r.raise_for_status()
             return r.json()
         except Exception:

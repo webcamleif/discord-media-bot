@@ -9,6 +9,8 @@ class GeneralSettings(BaseModel):
     qb_update_seconds: int = Field(120, ge=10, le=3600)
     plex_update_seconds: int = 3600
     message_id_file: str = Field("/data/message_ids.json")
+    ca_cert_path: Optional[str] = None
+    insecure_ssl: bool = False
 
 class PlexStreamsSettings(BaseModel):
     channel_id: Optional[int] = Field(None, description="Discord channel for Plex streams")

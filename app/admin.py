@@ -360,6 +360,18 @@ def build_app(bot: BotManager) -> FastAPI:
         <input name="general.message_id_file" value="{cfg.general.message_id_file or ''}"/>
       </div>
     </div>
+    <div class="row">
+      <div>
+        <label>CA Cert Path</label>
+        <input name="general.ca_cert_path" value="{cfg.general.ca_cert_path or ''}" placeholder=""/>
+      </div>
+      <div>
+        <label> Allow insecure (disable SSL verification) </label>
+        <div class="checkbox-block">
+          <input name="general.insecure_ssl" type="checkbox" {'checked' if cfg.general.insecure_ssl else ''}>
+        </div>
+      </div>
+    </div>
   </fieldset>
 
   <fieldset>
@@ -526,6 +538,9 @@ def build_app(bot: BotManager) -> FastAPI:
         cfg.general.stats_update_seconds = int(form.get("general.stats_update_seconds", cfg.general.stats_update_seconds) or 86400)
         cfg.general.qb_update_seconds = int(form.get("general.qb_update_seconds", cfg.general.qb_update_seconds) or 120)
         cfg.general.plex_update_seconds = int(form.get("general.plex_update_seconds", cfg.general.plex_update_seconds) or 3600)
+        cfg.general.ca_cert_path = form.get("general.ca_cert_path", "").strip() or None
+        cfg.general.insecure_ssl = form.get("general.insecure_ssl") in ("on", "true", "1")
+
     
         ch = form.get("streams.channel_id", "").strip()
         cfg.streams.channel_id = int(ch) if ch else None

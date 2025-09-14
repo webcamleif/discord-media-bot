@@ -1,31 +1,78 @@
+import os
+import requests
+import logging
 import time
 import qbittorrentapi
+from app.sslutil import build_requests_kwargs
+
+log = logging.getLogger("qbit")
 
 class QbitClient:
-    """
-    qBittorrent client with resilient reconnect & exponential backoff.
-    - Does NOT raise on connection errors.
-    - get_downloading() returns:
-        * list[...]  when connected
-        * None       when currently disconnected (will retry automatically)
-    """
-    def __init__(self, host: str, port: int, user: str, password: str):
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
+    def __init__(self, host: str, user: str, password: str,
+                 ca_cert_path: str | None = None, insecure: bool = False):
 
-        self.client = qbittorrentapi.Client(host=host, port=port, username=user, password=password)
-        self.connected: bool = False
+        # Only use config value, no ENV fallback
+        if ca_cert_path:
+            chosen_ca = ca_cert_path
+            log.info(f"[QbitClient] CA from config: {chosen_ca}")
+        else:
+            chosen_ca = None
+            log.info("[QbitClient] No custom CA; will use system trust or insecure")
 
-        # Backoff control
-        self._backoff = 5            # seconds (min)
-        self._backoff_max = 300      # seconds (max)
+        # Validate CA exists
+        use_ca = bool(chosen_ca and os.path.exists(chosen_ca))
+        if chosen_ca and not use_ca:
+            log.warning(f"[QbitClient] CA path {chosen_ca} does not exist; falling back to system trust or insecure")
+
+        # Build requests args
+        if insecure:
+            requests_args = {"verify": False}
+            verify_webui = False
+            log.warning("[QbitClient] Running in INSECURE mode (no SSL verification)")
+        elif use_ca:
+            requests_args = {"verify": chosen_ca}
+            verify_webui = True
+            log.info(f"[QbitClient] Will use custom CA for verify: {chosen_ca}")
+        else:
+            requests_args = {"verify": True}
+            verify_webui = True
+            log.info("[QbitClient] Using system CA store")
+
+        # Instantiate client
+        self.client = qbittorrentapi.Client(
+            host=host,
+            username=user,
+            password=password,
+            VERIFY_WEBUI_CERTIFICATE=verify_webui,
+            REQUESTS_ARGS=requests_args,
+        )
+
+        # Probe with requests directly
+        try:
+            resp = requests.get(f"{host}/api/v2/app/version", **requests_args, timeout=10)
+            log.info(f"[QbitClient] Probe OK: status={resp.status_code}")
+        except Exception as e:
+            log.error(f"[QbitClient] Probe FAILED: {e}")
+
+        # Force session.verify if session exists after login
+        try:
+            self.client.auth_log_in()
+            session = getattr(self.client, "_request_session", None) or getattr(self.client, "_http_session", None)
+            if session is not None:
+                session.verify = requests_args["verify"]
+                log.info(f"[QbitClient] Patched session.verify = {session.verify}")
+            else:
+                log.warning("[QbitClient] Could not patch session.verify – session object is None")
+            self.connected = True
+        except Exception as e:
+            self.connected = False
+            log.error(f"[QbitClient] Auth login failed: {e}")
+
+        # Setup backoff
+        self._backoff = 5
+        self._backoff_max = 300
         self._next_try_at = 0.0
         self._last_error: str | None = None
-
-        # Try initial connect (non-fatal)
-        self._try_connect(initial=True)
 
     # ---------- Public API ----------
     def get_downloading(self):
@@ -67,12 +114,19 @@ class QbitClient:
 
     def _try_connect(self, initial: bool = False) -> bool:
         try:
+            # Quick manual probe before qbittorrentapi
+            test_url = f"{self.client.host}/api/v2/app/version"
+            r = requests.get(
+                test_url,
+                verify=self.client._VERIFY_WEBUI_CERTIFICATE
+            )
+            log.debug(f"[QbitClient] Probe status={r.status_code}, body={r.text[:80]}")
+            
             self.client.auth_log_in()
             self.connected = True
             self._reset_backoff()
             return True
         except qbittorrentapi.LoginFailed as e:
-            # Bad creds are unlikely to recover; still backoff to avoid log spam
             self._on_failure(e)
             return False
         except Exception as e:
